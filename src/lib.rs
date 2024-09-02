@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, fs};
 
 #[derive(Debug)]
 pub struct Config {
@@ -31,6 +31,26 @@ impl Config {
 }
 
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
+    let contents = fs::read_to_string(&config.file_path)?;
+
+    let line_count = count_lines(&contents);
+    let word_count = count_words(&contents);
+    match config.chars {
+        true => {
+            let char_count = count_chars(&contents);
+            println!("File: {}", config.file_path);
+            println!("Lines: {}", line_count);
+            println!("Words: {}", word_count);
+            println!("Characters: {}", char_count);
+        },
+        false => {
+            let byte_count = count_bytes(&contents);
+            println!("File: {}", config.file_path);
+            println!("Lines: {}", line_count);
+            println!("Words: {}", word_count);
+            println!("Bytes: {}", byte_count);
+        },
+    }
     Ok(())
 }
 
