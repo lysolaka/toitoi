@@ -86,7 +86,14 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     };
 
     for path in &config.file_paths {
-        let contents = fs::read_to_string(path)?;
+        let contents = match fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) if e.raw_os_error().unwrap_or_default() == 21 => {
+                eprintln!("{} is a directory.", path);
+                continue;
+            }
+            Err(e) => return Err(Box::new(e)),
+        };
 
         let count = Counts {
             lines: count_lines(&contents),
