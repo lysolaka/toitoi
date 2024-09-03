@@ -4,7 +4,7 @@ use std::{error::Error, fs};
 pub struct Config {
     pub help: bool,
     pub chars: bool,
-    pub file_path: String,
+    pub file_paths: Vec<String>,
 }
 
 impl Config {
@@ -22,24 +22,46 @@ impl Config {
                 return Ok(Config {
                     help: true,
                     chars: false,
-                    file_path: String::from(""),
+                    file_paths: vec![String::from("")],
                 })
             }
             Some(_) => false,
             None => return Err("Not enough arguments provided!"),
         };
 
-        let file_path = match arg {
-            Some(s) => s,
-            None => return Err("No filename provided!"),
-        };
+        match arg {
+            Some(s) if s == "-h" || s == "--help" => {
+                return Ok(Config {
+                    help: true,
+                    chars: false,
+                    file_paths: vec![String::from("")],
+                })
+            }
+            _ => (),
+        }
+
+        let mut file_paths: Vec<String> = Vec::new();
+        while let Some(s) = arg {
+            file_paths.push(s);
+            arg = args.next();
+        }
+
+        if file_paths.len() == 0 {
+            return Err("No filename provided!");
+        }
 
         Ok(Config {
             help: false,
             chars,
-            file_path,
+            file_paths,
         })
     }
+}
+
+struct Counts {
+    lines: usize,
+    words: usize,
+    bc: usize,
 }
 
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
@@ -48,29 +70,43 @@ pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
         println!("Print line, word, byte count for FILE\n");
         println!("  -c, --chars  Print the number of characters instead of bytes");
         println!("  -h, --help   Display this help and exit");
-        return Ok(())
+        return Ok(());
     }
 
-    let contents = fs::read_to_string(&config.file_path)?;
-
-    let line_count = count_lines(&contents);
-    let word_count = count_words(&contents);
-    match config.chars {
-        true => {
-            let char_count = count_chars(&contents);
-            println!("File: {}", config.file_path);
-            println!("Lines: {}", line_count);
-            println!("Words: {}", word_count);
-            println!("Characters: {}", char_count);
-        }
-        false => {
-            let byte_count = count_bytes(&contents);
-            println!("File: {}", config.file_path);
-            println!("Lines: {}", line_count);
-            println!("Words: {}", word_count);
-            println!("Bytes: {}", byte_count);
-        }
+    if config.chars {
+        println!("L:  W:  C:  File:");
+    } else {
+        println!("L:  W:  B:  File:")
     }
+
+    let mut total = Counts {
+        lines: 0,
+        words: 0,
+        bc: 0,
+    };
+
+    for path in &config.file_paths {
+        let contents = fs::read_to_string(path)?;
+
+        let count = Counts {
+            lines: count_lines(&contents),
+            words: count_words(&contents),
+            bc: if config.chars {
+                count_chars(&contents)
+            } else {
+                count_bytes(&contents)
+            },
+        };
+
+        println!("{}  {}  {}  {}", count.lines, count.words, count.bc, path);
+
+        total.lines += count.lines;
+        total.words += count.words;
+        total.bc += count.bc;
+    }
+
+    println!("{}  {}  {}  total", total.lines, total.words, total.bc);
+
     Ok(())
 }
 
